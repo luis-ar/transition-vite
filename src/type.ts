@@ -1,3 +1,10 @@
+export interface IVideoFile {
+  src: string;
+  viewportWidth: number;
+  viewportHeight: number;
+  viewportX: number;
+  viewportY: number;
+}
 export interface ITrackItem {
   id: string;
   name: string;
@@ -10,5 +17,5 @@ export interface ITrackItem {
     paramsTypes: {};
     defaultParams: {};
   };
-  videoFiles: string[];
+  videoFiles: IVideoFile[];
 }

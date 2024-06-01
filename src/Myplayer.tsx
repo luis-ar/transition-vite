@@ -14,6 +14,12 @@ function MyPlayer({ trackItems }: { trackItems: ITrackItem[] }) {
       component={MyComp}
       controls
       inputProps={{ trackItems }}
+      style={{
+        backgroundColor: "black",
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+      }}
     />
   );
 }

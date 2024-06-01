@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState, useRef } from "react";
 import {
   continueRender,
   delayRender,
@@ -7,15 +7,15 @@ import {
 } from "remotion";
 import { Params, ParamsTypes } from "./gl-transition";
 import { DrawFn, initialize } from "./init";
-
-const canvas = React.createRef<HTMLCanvasElement>();
+import { IVideoFile } from "./type";
 
 export const GLTransitions: React.FC<{
   name: string;
   paramsTypes: ParamsTypes;
   defaultParams: Params;
-  videoFiles: string[];
+  videoFiles: IVideoFile[];
 }> = ({ name, defaultParams, paramsTypes, videoFiles }) => {
+  const canvas = useRef<HTMLCanvasElement>(null);
   const [handle] = useState(() => delayRender());
   const frame = useCurrentFrame();
   const { fps, width, height } = useVideoConfig();
@@ -35,7 +35,16 @@ export const GLTransitions: React.FC<{
     });
     setDrawFn(fn);
     continueRender(handle);
-  }, [defaultParams, fps, handle, height, name, paramsTypes, width]);
+  }, [
+    defaultParams,
+    fps,
+    handle,
+    height,
+    name,
+    paramsTypes,
+    width,
+    videoFiles,
+  ]);
 
   useEffect(() => {
     init();
@@ -45,7 +54,7 @@ export const GLTransitions: React.FC<{
     if (drawFn) {
       drawFn(frame);
     }
-  }, [drawFn, fps, frame]);
+  }, [drawFn, frame]);
 
   return <canvas ref={canvas} width={width} height={height} />;
 };

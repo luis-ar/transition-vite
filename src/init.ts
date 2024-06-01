@@ -24,8 +24,6 @@ export const initialize = async ({
   defaultParams,
   paramsTypes,
   canvas,
-  width,
-  height,
   fps,
   videoFiles,
 }: {
@@ -36,9 +34,17 @@ export const initialize = async ({
   width: number;
   height: number;
   fps: number;
-  videoFiles: string[];
+  videoFiles: {
+    src: string;
+    viewportWidth: number;
+    viewportHeight: number;
+    viewportX: number;
+    viewportY: number;
+  }[]; // Modificado para incluir la posición del viewport
 }) => {
-  const videos = await Promise.all(videoFiles.map(loadVideo));
+  const videos = await Promise.all(
+    videoFiles.map((video) => loadVideo(video.src))
+  ); // Modificado para cargar videos desde videoFiles
 
   const cubeTransition = await getCubeTransition({
     file: name,
@@ -47,7 +53,6 @@ export const initialize = async ({
   });
 
   const gl = canvas.getContext("webgl") as WebGLRenderingContext;
-  gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
   const buffer = gl.createBuffer();
   gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
   gl.bufferData(
@@ -55,12 +60,18 @@ export const initialize = async ({
     new Float32Array([-1, -1, -1, 4, 4, -1]),
     gl.STATIC_DRAW
   );
-  gl.viewport(0, 0, width, height);
-  const textures = videos.map((video) => {
+
+  const textures = videos.map((video, index) => {
     const texture = createTexture(gl, video);
     texture.minFilter = gl.LINEAR;
     texture.magFilter = gl.LINEAR;
-    return texture;
+    return {
+      texture,
+      viewportWidth: videoFiles[index].viewportWidth,
+      viewportHeight: videoFiles[index].viewportHeight,
+      viewportX: videoFiles[index].viewportX,
+      viewportY: videoFiles[index].viewportY,
+    }; // Modificado para incluir la posición del viewport
   });
 
   const transition = createTransition(gl, cubeTransition, {
@@ -76,37 +87,48 @@ export const initialize = async ({
     const currentVideo = videos[currentVideoIndex];
     const nextVideo = videos[nextVideoIndex];
 
+    // Update the viewport for each video
+    gl.viewport(
+      textures[currentVideoIndex].viewportX,
+      textures[currentVideoIndex].viewportY,
+      textures[currentVideoIndex].viewportWidth,
+      textures[currentVideoIndex].viewportHeight
+    );
+
     // Update the textures with the current video frame
-    textures[currentVideoIndex].setPixels(currentVideo);
-    textures[nextVideoIndex].setPixels(nextVideo);
+    textures[currentVideoIndex].texture.setPixels(currentVideo);
+    textures[nextVideoIndex].texture.setPixels(nextVideo);
 
     if (
       !transitionInProgress &&
       currentVideo.currentTime >= currentVideo.duration
     ) {
+      // Start the transition when the current video ends
       transitionInProgress = true;
       progress = 0;
-      nextVideo.currentTime = 0;
-      nextVideo.play();
+      nextVideo.currentTime = 0; // Reset the next video
+      nextVideo.play(); // Ensure the next video starts playing
     }
 
     if (transitionInProgress) {
-      progress += 1 / (fps * 2);
+      // Increment progress for the transition
+      progress += 1 / (fps * 2); // Transition over 2 seconds
       if (progress >= 1) {
+        // Complete the transition
         transitionInProgress = false;
         progress = 0;
         currentVideoIndex = nextVideoIndex;
         nextVideoIndex = (nextVideoIndex + 1) % videos.length;
-        currentVideo.play();
+        currentVideo.play(); // Ensure the current video continues playing
       }
     }
 
     transition.draw({
       progress,
-      from: textures[currentVideoIndex],
-      to: textures[nextVideoIndex],
-      width,
-      height,
+      from: textures[currentVideoIndex].texture,
+      to: textures[nextVideoIndex].texture,
+      width: textures[currentVideoIndex].viewportWidth,
+      height: textures[currentVideoIndex].viewportHeight,
       params: defaultParams,
     });
   };
